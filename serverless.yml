@@ -1,0 +1,75 @@
+service: greenway-lambda-poc
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+
+functions:
+  verify-token:
+    handler: handler.verifyToken
+
+  create:
+    handler: handler.create
+    events:
+      - http:
+          path: users/create
+          method: post
+          cors: true
+          # authorizer:
+          #   name: verify-token
+  getOne:
+    handler: handler.getOne
+    events:
+      - http:
+          path: users/{id}
+          method: get
+          cors: true
+          # authorizer:
+          #   name: verify-token
+  getAll:
+    handler: handler.getAll
+    events:
+      - http:
+          path: users
+          method: get
+          cors: true
+          # authorizer:
+          #   name: verify-token
+  update:
+    handler: handler.update
+    events:
+      - http:
+          path: users/{id}
+          method: put
+          cors: true
+          # authorizer:
+          #   name: verify-token
+  delete:
+    handler: handler.delete
+    events:
+      - http:
+          path: users/{id}
+          method: delete
+          cors: true
+          # authorizer:
+          #   name: verify-token
+
+  login:
+    handler: handler.login
+    events:
+      - http:
+          path: users/login
+          method: post
+          cors: true
+
+  password:
+    handler: handler.password
+    events:
+      - http:
+          path: users/updatePassword
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline
