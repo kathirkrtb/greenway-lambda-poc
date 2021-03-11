@@ -1,42 +1,38 @@
 'use strict';
 const AWS = require('aws-sdk');
-AWS.config.update({ "accessKeyId": "AKIA22TQDAYDAZVBH4H4", "secretAccessKey": "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", "region": "us-east-1" });
+
+//import email
+const config= require("./config/aws_config");
+AWS.config.update({ "accessKeyId": config.accessKeyId, "secretAccessKey": config.secretAccessKey, "region":config.region});
 
 
 const s3 = new AWS.S3();
-
 const dynamoClient = new AWS.DynamoDB.DocumentClient();
-const dynamoTableName = 'greenway_users';
 
 //import bcryptjs to hash the password
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
 
 //import validation
 const validateEmail = require("./validation/login");
 const User = require('./models/Users');
-
 //import response component
 const Responses = require("./common/Responses");
-const mongoose = require('mongoose');
-
-mongoose.Promise = global.Promise;
-const MONGODB_URI ="mongodb://174.129.161.185:27017/greenway";
-
 //import email
 const notification= require("./common/Notifications");
-
 //const jwt secret
 const JWT_SECRET=Buffer.from("GreenWay@123", "base64");
 
 //connect mongodb 
 let cachedDb = null;
 
-function connectToDatabase (uri) {
+function connectToDatabase () {
   if (cachedDb) {
     return Promise.resolve(cachedDb);
   }
-  return mongoose.connect(uri)
+  return mongoose.connect(config.MONGODB_URI)
     .then(db => { 
       cachedDb = db;
       return cachedDb;
@@ -117,12 +113,12 @@ module.exports.verifyToken = (event, context,callback) => {
 
 function base64MimeType(encoded) {
 
-  var result = null;
+  let result = null;
 
   if (typeof encoded !== 'string') {
     return result;
   }
-  var mime = encoded.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
+  const mime = encoded.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/);
   if (mime && mime.length) {
     result = mime[1];
   }
@@ -134,7 +130,19 @@ function base64Data(str){
     return str.replace(/^data:.+;base64,/, "")
 }
 
-async function updateDynamoDb(params){
+async function updateDynamoDb(user){
+
+    let params=  {
+      TableName : config.dynamoTableName, 
+      Item: {
+        'user_id':'U-'+user._id,
+        'userId': user._id ,
+        'id_card_type':"Aadhaar",
+        'id_card_number':user.id_card_number,
+        'created':new Date().getTime().toString()
+      }
+    }
+    
     return dynamoClient.put(params).promise();
 }
 
@@ -181,9 +189,17 @@ module.exports.create = async(event, context) => {
     pdfUrl=await fileUpload(body.id_card_pdf,context);
   }
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
     .then(() =>
-          User.create(
+
+        //check user exists
+        User.findOne({ email:body.email })
+
+    )
+    .then(async(user) => {
+
+          if (!user) {
+            return User.create(
               {
                 name:body.name,
                 email:body.email,
@@ -194,50 +210,56 @@ module.exports.create = async(event, context) => {
                 photo:imageUrl,
                 id_card_pdf:pdfUrl
               }
-        )
-    )
-    .then(async(user) => {
+            ).then(async(userData)=>{
+  
+                //check the id card type update in the dynamo db
+                if(userData.id_card_type === 'Aadhaar'){        
+                  const dynamoDbResult= await updateDynamoDb(userData);
+                }
+  
+                //send email to user
+                const resEmail=await notification._sendEmail(userData)
 
-      //check the id card type update in the dynamo db
-
-      if(user.id_card_type === 'Aadhaar'){
-
-          let params=  {
-            TableName : dynamoTableName, 
-            Item: {
-              'user_id':'U-'+user._id,
-              'userId': user._id ,
-              'id_card_type':"Aadhaar",
-              'id_card_number':user.id_card_number,
-              'created':new Date().getTime().toString()
-            }
-          }
-
-        var dynamoDbResult= await updateDynamoDb(params);
-
-        console.log('dynamoDbResult',dynamoDbResult);
-
-      }
-
-      //send email to user
-      var resEmail=await notification._sendEmail(user)
+                await notification._sendSms(userData) 
+              
+                return Responses._200({
+                  success:true,
+                  data:userData,
+                  message: 'User created successfully',
+                  mail:{
+                    status:resEmail
+                  }
+                });  
+  
+            }).catch(err =>{ 
+              return Responses._500(
+                {
+                  success:false,
+                  message: 'Could not create user',
+                  err,
+                }
+              );    
+  
+            });                    
       
-      console.log('resEmail',resEmail);
-    
-      return Responses._200({
-        success:true,
-        data:user,
-        mail:{
-          status:resEmail
-        }
-      });      
+          }else{
+
+            return Responses._200(
+              {
+                success:false,
+                message: 'User already exists',
+                error: 'User already exists'
+              }
+            );
+
+          }         
 
     })
     .catch(err =>{ 
         return Responses._500(
           {
             success:false,
-            message: 'Could not create user',
+            message: 'Could not load user',
             err,
           }
         );    
@@ -254,7 +276,7 @@ module.exports.getOne = async(event, context) => {
 
   context.callbackWaitsForEmptyEventLoop = false;
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
   .then(() =>
     User.findById(event.pathParameters.id)
   )
@@ -287,7 +309,7 @@ module.exports.getAll = async(event, context) => {
 
   context.callbackWaitsForEmptyEventLoop = false;
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
   .then(() =>
     User.find()
   )
@@ -316,13 +338,33 @@ module.exports.update = async(event, context) => {
 
   context.callbackWaitsForEmptyEventLoop = false;
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
   .then(() =>
     User.findById(event.pathParameters.id)
   )
   .then(async(user) => {
 
-      const body = JSON.parse(event.body);  
+      //check the user email exists
+      const body = JSON.parse(event.body); 
+
+      let uservalue=await User.findOne({ email:body.email });
+
+      // console.log('uservalue',uservalue);
+      // console.log('user',user);
+      
+      if(uservalue && uservalue._id != event.pathParameters.id){
+
+        return Responses._200(
+          {
+            success:false,
+            message: 'Email already exists to another user.',
+            error: 'Email already exists to another user.'
+          }
+        );
+
+      }
+
+       
       let imageUrl='';
       let pdfUrl='';
 
@@ -348,20 +390,10 @@ module.exports.update = async(event, context) => {
       .save()
       .then(async(data) => {
           //check the doc type and update inthe dynamo db
-          if(user.id_card_type === 'Aadhaar'){
-            let params=  {
-              TableName : dynamoTableName, 
-              Item: {
-                'user_id':'U-'+user._id,
-                'userId': user._id ,
-                'id_card_type':"Aadhaar",
-                'id_card_number':user.id_card_number,
-                'created':new Date().getTime().toString()
-              }
-            }  
-
-            var dynamoDbResult= await updateDynamoDb(params);
-            console.log('dynamoDbResult',dynamoDbResult);
+          if(data.id_card_type === 'Aadhaar'){
+             
+            const dynamoDbResult= await updateDynamoDb(user);
+            // console.log('dynamoDbResult',dynamoDbResult);
 
           }          
 
@@ -405,7 +437,7 @@ module.exports.update = async(event, context) => {
 
 module.exports.delete = async(event, context) => {
 
-    return connectToDatabase(MONGODB_URI)
+    return connectToDatabase()
     .then(() =>
     User.findByIdAndRemove(event.pathParameters.id)
     )
@@ -467,7 +499,7 @@ module.exports.login = async(event,context,callback) => {
   const email = input.email;
   const password = input.password;
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
     .then(() =>
       User.findOne({ email })
     )
@@ -485,7 +517,7 @@ module.exports.login = async(event,context,callback) => {
     
         }
 
-      var passwordMatch=await comparePassword(password,user.password);
+        const passwordMatch=await comparePassword(password,user.password);
 
       console.log('passwordMatch',passwordMatch);
 
@@ -553,7 +585,7 @@ module.exports.password = (event,context) => {
 
   }
 
-  return connectToDatabase(MONGODB_URI)
+  return connectToDatabase()
     .then(() =>
       User.findOne({ token_key })
     )
@@ -570,7 +602,7 @@ module.exports.password = (event,context) => {
           
         }
 
-        var hash=await bcrypt.hash(password, 8)
+        const hash=await bcrypt.hash(password, 8)
 
         console.log('hash',hash);
 

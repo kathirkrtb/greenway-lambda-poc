@@ -1,5 +1,0 @@
-{
-    "aws_db_secretArn": "arn:aws:secretsmanager:us-east-1:495853731287:secret:rds-db-credentials/cluster-V3MIJ53E5R6VIPWJ643TM5CJIU/flowDB-GVset4",
-    "aws_db_resourceArn": "arn:aws:rds:us-east-1:495853731287:cluster:database-flowiq-1",
-    "aws_database_name": "postgres"
-}

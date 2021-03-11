@@ -1,6 +1,8 @@
 const AWS = require('aws-sdk');
 var ses = new AWS.SES({ region: "us-east-1" });
 
+const axios = require('axios').default;
+
 const _sendEmail = async(data) =>{
     const name = data.name.substr(0, 40).replace(/[^\w\s]/g, '');
 
@@ -50,6 +52,23 @@ const _sendEmail = async(data) =>{
 
 };
 
+
+
+const _sendSms = async(data) =>{
+
+  const user_name = data.name.substr(0, 40).replace(/[^\w\s]/g, '');
+  const user_msg_content = `Please click here to update password. \n http://greenway-vue-poc.s3-website-us-east-1.amazonaws.com/password/${data.token_key}`;
+
+  const sms_url=`https://api.instaalerts.zone/SendSMS/sendmsg.php?uname=ANGLER&pass=a9F89e&send=Trinet&dest=91${data.mobile}&msg=Msg:Hi ${user_name}, Welcome to Greenway\nInfo: ${user_msg_content} \n -Trinetra&concat=0`;
+
+
+  console.log('start request to ' + sms_url)
+
+  return await axios.get(sms_url);
+ 
+};
+
 module.exports = {
-    _sendEmail
+    _sendEmail,
+    _sendSms
 };
