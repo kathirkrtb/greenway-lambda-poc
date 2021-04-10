@@ -53,7 +53,7 @@ exports.handler = async (event, context) => {
 
         return user
           .save()
-          .then((data) => {
+          .then(async (data) => {
             const payload = {
               id: data._id,
               email: data.email,

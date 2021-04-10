@@ -1,7 +1,7 @@
 const AWS = require("aws-sdk");
 const s3 = new AWS.S3();
 
-const base64MimeType = () => {
+const base64MimeType = (encoded) => {
   let result = null;
 
   if (typeof encoded !== "string") {

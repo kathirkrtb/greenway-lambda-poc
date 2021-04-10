@@ -13,7 +13,6 @@ const User = require("../models/Users");
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
-
   return db
     .connectToDatabase()
     .then(() => User.find())

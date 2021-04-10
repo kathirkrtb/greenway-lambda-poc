@@ -11,7 +11,13 @@ const documentClient = new AWS.DynamoDB.DocumentClient();
 const write = async (data, TableName) => {
   const params = {
     TableName,
-    Item: data,
+    Item: {
+      user_id: "U-" + data._id,
+      userId: data._id,
+      id_card_type: "Aadhaar",
+      id_card_number: data.id_card_number,
+      created: new Date().getTime().toString(),
+    },
   };
 
   const res = await documentClient.put(params).promise();

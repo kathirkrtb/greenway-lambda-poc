@@ -54,7 +54,10 @@ exports.handler = async (event, context) => {
           .then(async (userData) => {
             //check the id card type update in the dynamo db
             if (userData.id_card_type === "Aadhaar") {
-              const dynamoDbResult = await dynamo.write(userData);
+              const dynamoDbResult = await dynamo.write(
+                userData,
+                config.dynamoTableName
+              );
             }
 
             //send email to user

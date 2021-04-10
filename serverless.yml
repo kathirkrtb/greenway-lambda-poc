@@ -7,7 +7,7 @@ provider:
 
 functions:
   authorizer:
-    handler: handler.verifyToken
+    handler: handlers/authorizer.handler
 
   create:
     handler: handlers/createUser.handler
@@ -16,8 +16,8 @@ functions:
           path: users/create
           method: post
           cors: true
-          authorizer:
-            name: authorizer
+          # authorizer:
+          #   name: authorizer
   getOne:
     handler: handlers/getUser.handler
     events:
@@ -25,8 +25,8 @@ functions:
           path: users/{id}
           method: get
           cors: true
-          authorizer:
-            name: authorizer
+          # authorizer:
+          #   name: authorizer
   getAll:
     handler: handlers/readUser.handler
     events:
@@ -34,8 +34,8 @@ functions:
           path: users
           method: get
           cors: true
-          authorizer:
-            name: authorizer
+          # authorizer:
+          #   name: authorizer
   update:
     handler: handlers/updateUser.handler
     events:
@@ -43,8 +43,8 @@ functions:
           path: users/{id}
           method: put
           cors: true
-          authorizer:
-            name: authorizer
+          # authorizer:
+          #   name: authorizer
   delete:
     handler: handlers/deleteUser.handler
     events:
@@ -52,8 +52,8 @@ functions:
           path: users/{id}
           method: delete
           cors: true
-          authorizer:
-            name: authorizer
+          # authorizer:
+          #   name: authorizer
 
   login:
     handler: handlers/loginUser.handler

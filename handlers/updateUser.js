@@ -66,7 +66,7 @@ exports.handler = async (event, context) => {
         .then(async (data) => {
           //check the doc type and update inthe dynamo db
           if (data.id_card_type === "Aadhaar") {
-            const dynamoDbResult = dynamo.write(userData);
+            const dynamoDbResult = dynamo.write(user, config.dynamoTableName);
             // console.log('dynamoDbResult',dynamoDbResult);
           }
 
