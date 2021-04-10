@@ -6,57 +6,57 @@ provider:
   runtime: nodejs12.x
 
 functions:
-  verify-token:
+  authorizer:
     handler: handler.verifyToken
 
   create:
-    handler: handler.create
+    handler: handlers/createUser.handler
     events:
       - http:
           path: users/create
           method: post
           cors: true
-          # authorizer:
-          #   name: verify-token
+          authorizer:
+            name: authorizer
   getOne:
-    handler: handler.getOne
+    handler: handlers/getUser.handler
     events:
       - http:
           path: users/{id}
           method: get
           cors: true
-          # authorizer:
-          #   name: verify-token
+          authorizer:
+            name: authorizer
   getAll:
-    handler: handler.getAll
+    handler: handlers/readUser.handler
     events:
       - http:
           path: users
           method: get
           cors: true
-          # authorizer:
-          #   name: verify-token
+          authorizer:
+            name: authorizer
   update:
-    handler: handler.update
+    handler: handlers/updateUser.handler
     events:
       - http:
           path: users/{id}
           method: put
           cors: true
-          # authorizer:
-          #   name: verify-token
+          authorizer:
+            name: authorizer
   delete:
-    handler: handler.delete
+    handler: handlers/deleteUser.handler
     events:
       - http:
           path: users/{id}
           method: delete
           cors: true
-          # authorizer:
-          #   name: verify-token
+          authorizer:
+            name: authorizer
 
   login:
-    handler: handler.login
+    handler: handlers/loginUser.handler
     events:
       - http:
           path: users/login
@@ -64,7 +64,7 @@ functions:
           cors: true
 
   password:
-    handler: handler.password
+    handler: handlers/updateUserPassword.handler
     events:
       - http:
           path: users/updatePassword
